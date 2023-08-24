@@ -4,8 +4,8 @@
 
 class Message {
 private:
-    std::string m_auth{};
-    std::string message{};
+    std::string m_auth;
+    std::string message;
 public:
     Message();
     Message(std::string author, std::string msg);
@@ -21,7 +21,7 @@ public:
         return os;
     }
     friend std::istream& operator>> (std::istream& is, Message& obj) {
-        is >> obj.m_auth;
+        // is >> obj.m_auth;
         std::getline(is, obj.message);
 
         return is;

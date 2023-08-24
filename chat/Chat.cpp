@@ -1,4 +1,4 @@
-#include "Chat.h"
+п»ї#include "Chat.h"
 
 Chat::Chat() {}
 Chat::Chat(std::string filename) : name(filename) {}
@@ -22,19 +22,19 @@ void Chat::save_last_msg(Message& msg) {
 }
 
 bool Chat::messaging(User& user, std::string reciever_path) {
-    std::string text{}; // для очередного сообщения
+    std::string text{}; 
 
     std::cout << "Input message: ";
     std::getline(std::cin, text);
 
     if (!text.empty()) {
-        if (text == "\\quit") return false; // ввод \quit закрывает чат
+        if (text == "\\quit") return false; // 
         else {
-            Message* message = new Message(user.get_name(), text); // создаём новое сообщение
+            Message* message = new Message(user.get_name(), text);
 
-            save_last_msg(*message); // сохраняем его в файл
-            if (!(reciever_path == name)) { // если чат личный, то переписка должна быть для обоих, и отправителя и адресата
-                chat.write_on_file(reciever_path, *message); // соответственно сохраняем чат и для получателя
+            save_last_msg(*message); 
+            if (!(reciever_path == name)) { 
+                chat.write_on_file(reciever_path, *message); 
             }
 
             load_chat();

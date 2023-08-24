@@ -1,9 +1,15 @@
+#define NOMINMAX
+#include <limits>
 #include <iostream>
 #include <string>
 #include <fstream>
+#include <limits>
 #include <filesystem>
+#include "Network.cpp"
 #include "Chat.h"
+
 #define NO_USER -1 // дл€ функции поиска , означает, что пользователь не найден
+
 
 // √ЋќЅјЋ№Ќџ≈ ѕ≈–≈ћ≈ЌЌџ≈
 static bool active = true;                                      // флаг работы приложени€, если false, то работа программы завершена
@@ -25,6 +31,7 @@ inline void global_chatting() {
 
     while (messaging) {
         if (global_chat->messaging(*current_user, "global.txt")) continue;
+
         else messaging = false;
     }
 }
@@ -218,15 +225,65 @@ inline bool greetings() {
 }
 
 
+#define MESSAGE_BUFFER 4096
+#define PORT 7777
+
+static char buffer[MESSAGE_BUFFER];
+static char message[MESSAGE_BUFFER];
+static int socket_file_descriptor;
+
+#ifdef _WIN32
+typedef int socklen_t;
+#endif
+
+static socklen_t message_size, length;
+static const char* end_string = "end"; 
+
+static WSADATA wsaData;
+
+static struct sockaddr_in serveraddress, client;
+
 // √лавный цикл и меню 
 enum MENU { // перечисление опций меню
     GLOBAL = 1,
-    PERSONAL,
-    LOGOUT,
-    QUIT
+    PERSONAL = 2,
+    ONLINE = 3,
+    LOGOUT = 4,
+    QUIT = 5
 };
 // главное меню программы, доступно только после входа по логину и паролю.
 inline bool main_menu() {
+    if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+        std::cerr << "Failed to initialize Winsock" << std::endl;
+        system("pause");
+    }
+    socket_file_descriptor = static_cast<int>(socket(AF_INET, SOCK_DGRAM, 0));
+
+    if (socket_file_descriptor == -1) {
+        std::cerr << "Failed to create socket" << std::endl;
+        system("pause");
+#ifdef _WIN32
+        WSACleanup();
+#endif
+        // return false;
+    }
+
+    serveraddress.sin_addr.s_addr = htonl(INADDR_ANY);
+    serveraddress.sin_port = htons(PORT);
+    serveraddress.sin_family = AF_INET;
+
+    // BIND SOCKET TO ADDRESS AND PORT
+    if (bind(socket_file_descriptor, reinterpret_cast<struct sockaddr*>(&serveraddress),
+        sizeof(serveraddress)) == -1) {
+        std::cerr << "Failed  to bind socket" << std::endl;
+        system("pause");
+#ifdef _WIN32
+        closesocket(socket_file_descriptor);
+        WSACleanup();
+#endif
+        // return true;
+    }
+
     int option{};
 
     // “екстовое меню
@@ -234,8 +291,9 @@ inline bool main_menu() {
     std::cout << "Enjoy your time!\nChoose an option: ";
     std::cout << "1 - Enter Global Chat\n";
     std::cout << "2 - Enter Personal Chat\n";
-    std::cout << "3 - Log Out\n";
-    std::cout << "4 - Quit\n";
+    std::cout << "3 - Enter Online Chat\n";
+    std::cout << "4 - Log Out\n";
+    std::cout << "5 - Quit\n";
     std::cout << "Input '\\quit' in chats to leave the chat.\n";
     std::cout << "\nInput option: ";
 
@@ -243,7 +301,7 @@ inline bool main_menu() {
 
     while (true) {
         if ((!std::cin.fail() && option < GLOBAL && option > QUIT) || (std::cin.fail())) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max());
+            //std::cin.ignore(std::numeric_limits<std::streamsize>::max());
             std::cin.clear();
 
             std::cout << "Wrong input!\nTry again:\n";
@@ -251,6 +309,7 @@ inline bool main_menu() {
         }
         else break;
     }
+
     switch (option) {
     case GLOBAL: {
         // глобальный чат
@@ -274,7 +333,7 @@ inline bool main_menu() {
             while (true) {
                 if ((!std::cin.fail() && index < 0 && option > users.getSize() + 1) || (std::cin.fail())) {
 
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max());
+                    //std::cin.ignore(std::numeric_limits<std::streamsize>::max());
                     std::cin.clear();
                     //std::cout << "Wrong input!\nTry again:\n";
                     //std::cin >> index;
@@ -294,6 +353,66 @@ inline bool main_menu() {
             system("pause");
             break;
         }
+        break;
+    }
+    case ONLINE: {
+        std::cout << "SERVER IS LISTENING THROUGH THE PORT: " << PORT << " WITHIN A LOCAL SYSTEM" << std::endl;
+
+        while (true) {
+            length = sizeof(client);
+            // RECEIVE DATA FROM CLIENT
+            message_size = recvfrom(socket_file_descriptor, buffer, sizeof(buffer) - 1, 0,
+                reinterpret_cast<struct sockaddr*>(&client), &length);
+
+            if (message_size == -1) {
+                std::cerr << "Faild to receive data from client" << std::endl;
+#ifdef _WIN32
+                closesocket(socket_file_descriptor);
+                WSACleanup();
+#else
+                close(socket_file_descriptor);
+#endif
+                return true;
+            }
+
+            buffer[message_size] = '\0';
+
+            // CHECK FOR TERMINATION SIGNAL
+            if (strcmp(buffer, end_string) == 0) {
+                std::cout << "Server is quitting" << std::endl;
+#ifdef _WIN32
+                closesocket(socket_file_descriptor);
+                WSACleanup();
+#else
+                close(socket_file_descriptor);
+#endif
+                return true;
+            }
+
+            std::cout << "Message received from client: " << buffer << std::endl;
+
+            // REPLY TO CLIENT
+            std::cout << "Enter reply message to client: " << std::endl;
+
+            std::cin >> message;
+
+            sendto(socket_file_descriptor, message, strlen(message), 0,
+                reinterpret_cast<sockaddr*>(&client), sizeof(client));
+
+            std::cout << "Message sent successfully: " << message << std::endl;
+            std::cout << "Waiting for the reply from Client . . ." << std::endl;
+        }
+
+
+        std::cout << "Server is quitting" << std::endl;
+
+#ifdef _WIN32
+        closesocket(socket_file_descriptor);
+        WSACleanup();
+#else
+        close(socket_file_descriptor);
+#endif
+        return true;
         break;
     }
     case LOGOUT: {
@@ -328,4 +447,9 @@ inline void main_loop() {
         }
         else loged = main_menu();
     }
+}
+
+
+inline void network_chatting() {
+
 }

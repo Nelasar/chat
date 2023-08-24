@@ -3,9 +3,8 @@
 #include "routine.cpp"
 #include "Chat.h"
 
-
 int main()
-{
+{   
     users.read_from_file("users.txt"); // считывем сохранённых пользователей для дальнейшей работы
     std::filesystem::create_directory("C:\\ChatUsers"); // создание директории для более удобного хранения ифнормации о личных чатах
 
