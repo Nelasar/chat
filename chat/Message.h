@@ -8,12 +8,14 @@ private:
     std::string message;
 public:
     Message();
+    Message(std::string author);
     Message(std::string author, std::string msg);
     Message(const Message& m_other);
     ~Message();
 
     std::string get_msg();
     std::string get_auth();
+    std::string formated_message();
 
     friend std::ostream& operator<<(std::ostream& os, const Message& obj) {
         os << obj.m_auth << ' ' << obj.message << '\n';

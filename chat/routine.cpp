@@ -359,6 +359,7 @@ inline bool main_menu() {
         std::cout << "SERVER IS LISTENING THROUGH THE PORT: " << PORT << " WITHIN A LOCAL SYSTEM" << std::endl;
 
         while (true) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             length = sizeof(client);
             // RECEIVE DATA FROM CLIENT
             message_size = recvfrom(socket_file_descriptor, buffer, sizeof(buffer) - 1, 0,
@@ -389,22 +390,29 @@ inline bool main_menu() {
                 return true;
             }
 
-            std::cout << "Message received from client: " << buffer << std::endl;
-
+            std::cout << buffer << std::endl;
             // REPLY TO CLIENT
-            std::cout << "Enter reply message to client: " << std::endl;
+            std::cout << "Enter message:" << std::endl;
 
-            std::cin >> message;
+            
+            Message msg(current_user->get_name());
+            std::cin >> msg;
+            //std::string full_message = msg.get_auth() + ": " + msg.get_msg();
+
+            strcpy(message, msg.formated_message().c_str());
+            
+
+            // std::cin.getline(message, MESSAGE_BUFFER);
 
             sendto(socket_file_descriptor, message, strlen(message), 0,
                 reinterpret_cast<sockaddr*>(&client), sizeof(client));
 
-            std::cout << "Message sent successfully: " << message << std::endl;
+            std::cout << message << std::endl;
             std::cout << "Waiting for the reply from Client . . ." << std::endl;
         }
 
-
         std::cout << "Server is quitting" << std::endl;
+        system("pause");
 
 #ifdef _WIN32
         closesocket(socket_file_descriptor);
